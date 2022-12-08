@@ -68,16 +68,50 @@ step fd (Command Ls)     = fd
 step fd (Directory dName) = makeDirectory fd dName
 step fd (File name size)  = createFile fd name size
                            
-                             
--- -- part1:: FDZipper -> [String,Int]
--- -- part1 (root,_) = go root []
--- --                where go node result = case node of
--- --                                         (FDDirectory name contents) ->
--- --                                           let 
--- --                                           map getSize files
 
+
+-- rose tree?
+
+calcSize:: FileDirectory -> [(String,Int)]
+calcSize root = go root [] "ROOT"
+         where
+           go (FDDirectory name [] files) result parentName = (parentName ++ "/" ++name,totalFileSize files):result
+           go (FDDirectory name subDir files ) result parentName  =  (parentName ++ "/" ++name,totalFileSize files + subDirSize):subResult  ++ result 
+            where subResult  = concatMap (\x -> go x [] (parentName ++ "/" ++ name)) subDir
+                  subDirNames :: [String]
+                  subDirNames = map (\(FDDirectory subName _ _) -> parentName ++ "/" ++  name ++"/" ++ subName ) subDir
+                  
+                  subDirSize  = sum $ map snd  $ filter (\(x,_) -> x `elem` (subDirNames)) (subResult)
+                   
+
+
+totalFileSize :: [FileDirectory] -> Int
+totalFileSize files = sum $ map getFileSize files
+    where getFileSize (FDFile _ size) = size
 -- --findCandidateSize :: [Entry] -> Int
 -- --findCandidateSize entries =
 
+totalFileSizeFromLines :: [Entry] -> Int
+totalFileSizeFromLines xs = sum $ map getFileSize xs
+  where getFileSize (File _ size) = size
+        getFileSize _ = 0
 
-  
+
+
+calc ::String -> IO ()
+calc str = do
+   file <- readFile str
+   let (treeRoot,_) = topMost $ buildTree $ parseEntry $ lines file
+       totalFileSize = totalFileSizeFromLines $ parseEntry $ lines file
+       result = calcSize treeRoot
+       part1_answer = sum $ filter (<= 100000) $ map snd result
+       outMost = case lookup "/" result of
+                   Just n -> n
+                   _ -> error "no root found!"
+       freeSpace = 70000000 - totalFileSize
+       threshold = 30000000 - freeSpace
+       part2_answer = minimum $ filter (>threshold) $ sort $ map snd result
+   putStrLn $ show totalFileSize
+   --putStrLn $ show treeRoot
+   putStrLn $  (show part2_answer )
+   return ()
