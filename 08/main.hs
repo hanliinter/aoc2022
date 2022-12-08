@@ -34,13 +34,18 @@ countRows :: [[(Indices,Int)]] -> [[(Indices,Int)]]
 countRows aTree = let leftToRight = map countVisibleInRowFromFront aTree
                       rightToleft = map (countVisibleInRowFromFront . reverse) aTree
                       combined    = zipWith (++) leftToRight rightToleft
-                      result      = map (sortBy (\( (_,j1),_) ((_,j2), _) -> compare j1 j2)) $ map nub combined
+                      result      =  map nub combined
                   in
                     result
+
+removeFence ::Int-> [[(Indices,Int)]] -> [[(Indices,Int)]]
+removeFence n xs = map (filter (\((x,y),_) -> x == 0 || y == 0 || x == n || y == n)) xs
+             
+
 main = do
   file <- readFile "input.txt"
   let aTree = annotateTrees $ fromMap file
-      passOne = countRows aTree
-      passTwo = transpose $ countRows $ transpose aTree
-      result = length $ nub $ concat  $ zipWith (++) passOne passTwo
-  putStrLn $ show $ result
+      passOne =  concat $countRows aTree
+      passTwo =  concat $ transpose $ countRows $ transpose aTree
+      result =  nub $ passOne ++ passTwo
+  putStrLn $ show $ length $ result
