@@ -15,12 +15,6 @@ annotateTrees hs = let temp = map ( \(i, xs) -> (i, zip [0..] xs)) $ zip [0..] h
                      map (\(i,ts) -> map (\(j,h) -> ((i,j),h)) ts ) temp
 
 
-firstBig :: [Int] -> [Int]
-firstBig (x:xs) = go xs [x]
-    where
-    go (a:[]) result  = reverse  (a:result)
-    go (a:bs) result@(x:_) = if a <= x then go bs result
-                                      else go bs (a:result)
          
 countVisibleInRowFromFront :: [(Indices,Int)] -> [(Indices,Int)]
 countVisibleInRowFromFront (x:xs) = go xs [x]
@@ -38,14 +32,40 @@ countRows aTree = let leftToRight = map countVisibleInRowFromFront aTree
                   in
                     result
 
-removeFence ::Int-> [[(Indices,Int)]] -> [[(Indices,Int)]]
-removeFence n xs = map (filter (\((x,y),_) -> x == 0 || y == 0 || x == n || y == n)) xs
-             
+
+calcDistance :: [Int] -> Int -> (Int,Int)
+calcDistance xs i = let (left,x:right) = splitAt i xs
+                        leftDistance = calcBackword left x
+                        rightDistance = calcForward right x
+                    in
+                      (leftDistance,rightDistance)
+
+calcBackword :: [Int] -> Int -> Int
+calcBackword left x = calcForward (reverse left) x
+  
+calcForward :: [Int] -> Int -> Int
+calcForward right x = go right x 1
+                 where go [] x n = n -1 
+                       go (a:as) x n = if a < x then go as x (n+1)
+                                                else n 
+                    
+calcScore :: Trees -> Indices -> Int
+calcScore trees (x,y) = let row = trees !! x
+                            (l,r) = calcDistance row y
+                            col = (transpose trees) !! y
+                            (u,d) = calcDistance col x
+                         in
+                          product [l,r,u,d]
+
 
 main = do
   file <- readFile "input.txt"
-  let aTree = annotateTrees $ fromMap file
+  let 
+      trees  = fromMap file
+      aTree = annotateTrees trees
       passOne =  concat $countRows aTree
       passTwo =  concat $ transpose $ countRows $ transpose aTree
       result =  nub $ passOne ++ passTwo
+      socres = map (\(index,_) -> calcScore trees index ) result
   putStrLn $ show $ length $ result
+  putStrLn $ show $ maximum socres
