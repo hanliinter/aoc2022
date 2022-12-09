@@ -1,8 +1,10 @@
 import Control.Monad
 import Control.Monad.Trans.Writer
+import Data.Functor.Identity
+import Data.List
 -- assume that start point is (0,0)
 
-data Direction = Up | Right | Down | Left
+data Direction = Up | Right | Down | Left deriving (Show)
 type Command = (Direction,Int)
 type Index = (Int,Int)
 
@@ -94,8 +96,13 @@ lineToInstruction xs = let (d:n:_) = words xs
                            n' = read n
                            d' = stringToDirection d
                        in
-                         take n' repeat d'
+                         take n' $ repeat d'
 
 
 handleInput :: String -> [Direction]
-handleInput xs =map (\(d:))  map words $lines xs
+handleInput xs =concat $ map lineToInstruction $lines xs
+
+main = do
+  input <- readFile "input.txt"
+  let (_,visited) = runIdentity $ runWriterT $ stepOver ((0,0),(0,0)) $ handleInput input
+  putStrLn $ show $ length $ nub ((0,0):visited)
