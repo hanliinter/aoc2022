@@ -92,7 +92,7 @@ stepLeft (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h L in
                                  case touchType h t of
                                    Overlapping -> (h', t, NOP)
                                    Horizontal  -> if hy < ty then (h', (changePoint t L),L)
-                                                             else (h,t,NOP)
+                                                             else (h',t,NOP)
                                    Vertical    -> (h',t,NOP)
                                    NE          -> (h',t,NOP)
                                    SE          -> (h',t,NOP)
@@ -104,7 +104,7 @@ stepRight (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h R in
                                  case touchType h t of
                                    Overlapping -> (h', t, NOP)
                                    Horizontal  -> if hy > ty then (h', (changePoint t R),R)
-                                                             else (h,t,NOP)
+                                                             else (h',t,NOP)
                                    Vertical    -> (h',t,NOP)
                                    NE          -> (h',(changePoint t UR),UR)
                                    SE          -> (h',(changePoint t DR),DR)
@@ -117,9 +117,9 @@ stepUpLeft (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h UL in
                                  case touchType h t of
                                    Overlapping -> (h', t, NOP)
                                    Horizontal  -> if hy < ty then (h', (changePoint t UL),UL)
-                                                             else (h,t,NOP)
-                                   Vertical    -> if hx > tx then (h', (changePoint t UL), UL)
                                                              else (h',t,NOP)
+                                   Vertical    -> if hx < tx then (h',t, NOP)
+                                                             else (h',(changePoint t UL),UL)
                                    NE          -> (h',(changePoint t U), U)
                                    SE          -> (h',t,NOP)
                                    NW          -> (h',(changePoint t UL),UL)
@@ -132,7 +132,7 @@ stepDownLeft (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h DL in
                                  case touchType h t of
                                    Overlapping -> (h', t, NOP)
                                    Horizontal  -> if hy < ty then (h', (changePoint t DL),DL)
-                                                             else (h,t,NOP)
+                                                             else (h',t,NOP)
                                    Vertical    -> if hx < tx then (h', (changePoint t DL), DL)
                                                              else (h',t,NOP)
                                    NE          -> (h',t,NOP)
@@ -147,7 +147,7 @@ stepUpRight (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h UR in
                                  case touchType h t of
                                    Overlapping -> (h', t, NOP)
                                    Horizontal  -> if hy > ty then (h', (changePoint t UR),UR)
-                                                             else (h,t,NOP)
+                                                             else (h',t,NOP)
                                    Vertical    -> if hx > tx then (h', (changePoint t UR), UR)
                                                              else (h',t,NOP)
                                    NE          -> (h',(changePoint t UR),UR)
@@ -160,7 +160,7 @@ stepDownRight (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h DR in
                                  case touchType h t of
                                    Overlapping -> (h', t, NOP)
                                    Horizontal  -> if hy > ty then (h', (changePoint t DR),DR)
-                                                             else (h,t,NOP)
+                                                             else (h',t,NOP)
                                    Vertical    -> if hx < tx then (h', (changePoint t DR), DR)
                                                              else (h',t,NOP)
                                    NE          -> (h',(changePoint t R),R)
