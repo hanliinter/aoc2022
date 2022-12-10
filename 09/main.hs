@@ -1,5 +1,7 @@
+--{-# LANGUAGE FlexibleContexts #-}
 import Control.Monad
 import Control.Monad.Writer
+import Debug.Trace
 --import Control.Monad.Trans.Writer
 import Data.Functor.Identity
 import Data.List
@@ -24,14 +26,42 @@ changePoint _ NOP = error "should not happen"
 stepOver :: (Index,Index) -> [Direction] -> Writer [Index] (Index,Index)
 stepOver pair directions  = foldM stepOneM pair directions
 
+stepOver2 :: [Index] -> [Direction] -> Writer [Index] [Index]
+stepOver2 ps directions = foldM stepOne2 ps directions
 
--- stepOne2 :: [Index] -> Direction -> Writer [Index] [Index]
--- stepOne2 ts d = go ts [] d
---   where go (t2:t:[]) result d = stepOnePart2 (t2,t)
+stepOne2 :: [Index] -> Direction -> Writer [Index] [Index]
+stepOne2 ts d = go ts [] d
+ where  go :: [Index] -> [Index] -> Direction -> Writer [Index] [Index]
+--        go (t2:t:[]) []     d = let (t2',t',d')  = step (t2,t) d in
+                                  
+        go (t2:t:[]) result d = let (t2', t', d') = step (t2,t) d in
+                                  case d' of
+                                    NOP -> return $ reverse (t':result)
+                                    otherwise -> tell [t'] >> return (reverse (t':result))
+        go (h:h1:hs) [] d = let (h',h1',d')  = step (h,h1) d  in
+                                   go (h1:hs) [h1',h'] d'
+      
+        
+        go (h:h1:hs) result d = let (h',h1',d')  = step (h,h1) d  in
+                                   go (h1:hs) (h1':result) d'
+                      
 
 --stepOnePart2 (Index,Index) -> Direction -> (Index,Index,Direction)
 --stepOnePart2 (curr,next) 
 
+step :: (Index,Index) -> Direction -> (Index,Index,Direction)                      
+step pair U = stepUp pair
+step pair L = stepLeft pair
+step pair D = stepDown pair
+step pair R = stepRight pair
+step pair UL = stepUpLeft pair
+step pair UR = stepUpRight pair
+step pair DL = stepDownLeft pair
+step pair DR = stepDownRight pair
+step pair@(x,y) NOP = (x,y,NOP) 
+
+
+                      
 stepUp ::(Index, Index) -> (Index,Index,Direction)
 stepUp (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h U in
                                  case touchType h t of
@@ -65,8 +95,8 @@ stepLeft (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h L in
                                                              else (h,t,NOP)
                                    Vertical    -> (h',t,NOP)
                                    NE          -> (h',t,NOP)
-                                   SE          -> (h',(changePoint t DR),DR)
-                                   NW          -> (h',t,NOP)
+                                   SE          -> (h',t,NOP)
+                                   NW          -> (h',(changePoint t UL),UL)
                                    SW          -> (h',(changePoint t DL),DL)
 
 stepRight ::(Index, Index) -> (Index,Index,Direction)
@@ -76,23 +106,68 @@ stepRight (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h R in
                                    Horizontal  -> if hy > ty then (h', (changePoint t R),R)
                                                              else (h,t,NOP)
                                    Vertical    -> (h',t,NOP)
-                                   NE          -> (h',t,NOP)
+                                   NE          -> (h',(changePoint t UR),UR)
                                    SE          -> (h',(changePoint t DR),DR)
                                    NW          -> (h',t,NOP)
-                                   SW          -> (h',(changePoint t DL),DL)
+                                   SW          -> (h',t,NOP)
 
 
 stepUpLeft ::(Index, Index) -> (Index,Index,Direction)
-stepUpLeft (h@(hx,hy),t@(tx,ty)) = let h' = (hx+1, hy) in
+stepUpLeft (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h UL in
                                  case touchType h t of
                                    Overlapping -> (h', t, NOP)
-                                   Horizontal  -> if hy < ty then (h', (changePoint t L),L)
+                                   Horizontal  -> if hy < ty then (h', (changePoint t UL),UL)
                                                              else (h,t,NOP)
-                                   Vertical    -> (h',t,NOP)
+                                   Vertical    -> if hx > tx then (h', (changePoint t UL), UL)
+                                                             else (h',t,NOP)
+                                   NE          -> (h',(changePoint t U), U)
+                                   SE          -> (h',t,NOP)
+                                   NW          -> (h',(changePoint t UL),UL)
+                                   SW          -> (h',(changePoint t L),L)
+
+
+
+stepDownLeft ::(Index, Index) -> (Index,Index,Direction)
+stepDownLeft (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h DL in
+                                 case touchType h t of
+                                   Overlapping -> (h', t, NOP)
+                                   Horizontal  -> if hy < ty then (h', (changePoint t DL),DL)
+                                                             else (h,t,NOP)
+                                   Vertical    -> if hx < tx then (h', (changePoint t DL), DL)
+                                                             else (h',t,NOP)
                                    NE          -> (h',t,NOP)
+                                   SE          -> (h',(changePoint t D),D)
+                                   NW          -> (h',(changePoint t L),L)
+                                   SW          -> (h',(changePoint t DL),DL)
+
+
+
+stepUpRight ::(Index, Index) -> (Index,Index,Direction)
+stepUpRight (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h UR in
+                                 case touchType h t of
+                                   Overlapping -> (h', t, NOP)
+                                   Horizontal  -> if hy > ty then (h', (changePoint t UR),UR)
+                                                             else (h,t,NOP)
+                                   Vertical    -> if hx > tx then (h', (changePoint t UR), UR)
+                                                             else (h',t,NOP)
+                                   NE          -> (h',(changePoint t UR),UR)
+                                   SE          -> (h',(changePoint t R),R)
+                                   NW          -> (h',(changePoint t U),U)
+                                   SW          -> (h',t,NOP)
+
+stepDownRight ::(Index, Index) -> (Index,Index,Direction)
+stepDownRight (h@(hx,hy),t@(tx,ty)) = let h' = changePoint h DR in
+                                 case touchType h t of
+                                   Overlapping -> (h', t, NOP)
+                                   Horizontal  -> if hy > ty then (h', (changePoint t DR),DR)
+                                                             else (h,t,NOP)
+                                   Vertical    -> if hx < tx then (h', (changePoint t DR), DR)
+                                                             else (h',t,NOP)
+                                   NE          -> (h',(changePoint t R),R)
                                    SE          -> (h',(changePoint t DR),DR)
                                    NW          -> (h',t,NOP)
-                                   SW          -> (h',(changePoint t DL),DL)
+                                   SW          -> (h',(changePoint t D),D)
+
 
 
 stepOneM :: (Index,Index) -> Direction -> Writer [Index] (Index,Index)
@@ -187,6 +262,8 @@ handleInput :: String -> [Direction]
 handleInput xs =concat $ map lineToInstruction $lines xs
 
 main = do
-  input <- readFile "input.txt"
-  let (_,visited) =  runWriter $ stepOver ((0,0),(0,0)) $ handleInput input
+  input <- readFile "bigger.txt"
+  let (a,visited) =  runWriter $ stepOver2 (take 10 $ repeat (0,0)) $ handleInput input
+  putStrLn $ show a
+  putStrLn $ show $ nub ((0,0):visited)
   putStrLn $ show $ length $ nub ((0,0):visited)
