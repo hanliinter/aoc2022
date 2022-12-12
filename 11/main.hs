@@ -24,7 +24,12 @@ data Monkey = Monkey {
                      }
 
 instance Show Monkey where
-  show  (Monkey _items _ _ _ _ _) = show _items
+  show  (Monkey _items _ divisible _ _ _) = "(" ++ show _items ++ "," ++ show divisible ++ ")"
+
+loadMonkeys :: String -> [Monkey]
+loadMonkeys xs = let xs' = wordsWhile (=="") $ lines xs in
+                   map loadMonkey xs'
+  
 loadMonkey :: [String] -> Monkey
 loadMonkey (_:a:b:c:d:e:[]) = Monkey {
                                         items = readItems a
@@ -35,6 +40,9 @@ loadMonkey (_:a:b:c:d:e:[]) = Monkey {
                                        , count = 0
                                        }
 loadMonkey _ = error "malformat"
+
+
+
 
 
 readItems ::String ->[Int]
@@ -59,39 +67,39 @@ oper (operant1:op:operant2:_) = if operant1 == operant2 then case op of
                                                               else
                                                                   case op of
                                                                     "*" -> (* (read operant2))
-                                                                    "+" -> (* (read operant2))
+                                                                    "+" -> (+ (read operant2))
 
 
-testMonkey0 = Monkey{
-                     items = [79,98]
-                    ,operation = (*19)
-                    ,divisible = 23
-                    ,trueBranch = 1
-                    ,falseBranch = 1
-                    ,count =0
-                    }
+-- testMonkey0 = Monkey{
+--                      items = [79,98]
+--                     ,operation = (*19)
+--                     ,divisible = 23
+--                     ,trueBranch = 1
+--                     ,falseBranch = 1
+--                     ,count =0
+--                     }
 
-testMonkey1 = Monkey{
-                     items = [54,65]
-                    ,operation = (+619)
-                    ,divisible = 19
-                    ,trueBranch = 2
-                    ,falseBranch = 2
-                    ,count=0
-                    }
+-- testMonkey1 = Monkey{
+--                      items = [54,65]
+--                     ,operation = (+619)
+--                     ,divisible = 19
+--                     ,trueBranch = 2
+--                     ,falseBranch = 2
+--                     ,count=0
+--                     }
 
 
 
-testMonkey2 = Monkey{
-                     items = [79,98]
-                    ,operation = (*19)
-                    ,divisible = 23
-                    ,trueBranch = 1
-                    ,falseBranch = 1
-                    ,count=0
-                    }
+-- testMonkey2 = Monkey{
+--                      items = [79,98]
+--                     ,operation = (*19)
+--                     ,divisible = 23
+--                     ,trueBranch = 1
+--                     ,falseBranch = 1
+--                     ,count=0
+--                     }
 
-testMonkeys = [testMonkey0,testMonkey1,testMonkey2]
+-- testMonkeys = [testMonkey0,testMonkey1,testMonkey2]
 --simulate :: [Monkey] -> [Monkey]
 --simulate monkeys = go monkes
 simMonkey :: Int ->State [Monkey] ()
@@ -107,9 +115,10 @@ simMonkey i = do
              let monkey = monkeys !! i
                  newMonkey = monkey{items = rest}
                  new = ((operation monkey) item ) `div` 3
-             put(updateMonkey newMonkey monkeys)
-             if new `mod` (divisible monkey) == 0 then put (throwItems new (trueBranch monkey) monkeys) >> updateItems rest
-                                                  else put (throwItems new (falseBranch monkey)  monkeys) >> updateItems rest
+                 newmonkeys = updateMonkey newMonkey monkeys
+             put(newmonkeys)
+             if new `mod` (divisible monkey) == 0 then put (throwItems new (trueBranch monkey) newmonkeys) >> updateItems rest
+                                                  else put (throwItems new (falseBranch monkey)  newmonkeys) >> updateItems rest
 
        updateMonkey monkey monkeys = let (pre,target:after) = splitAt i monkeys
                                          in
@@ -120,3 +129,13 @@ simMonkey i = do
                                         newMonkey = target {items = newitems}
                                         in
                                           pre++ (newMonkey:after)
+
+
+simSingleRound :: Int -> State [Monkey] ()
+simSingleRound size = go 0
+  where go n = if n == size then return ()
+                            else simMonkey n >> go (n+1)
+
+
+simRounds :: Int -> State [Monkey] ()
+simRounds n = replicateM_ n (simSingleRound 4)
