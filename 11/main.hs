@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 import Control.Monad.State
+import Data.Word
+import Data.Int
 import Data.List
 --import Text.Parsec
 -- I don't like the hard code solution but it works now
@@ -15,9 +17,9 @@ wordsWhile p xs = case dropWhile p xs of
 
 
 data Monkey = Monkey {
-                       items :: [Integer]
-                     , operation :: (Integer  -> Integer)
-                     , divisible :: Integer
+                       items :: [Int]
+                     , operation :: (Int -> Int)
+                     , divisible :: Int
                      , trueBranch :: Int
                      , falseBranch :: Int
                      , count :: Int
@@ -45,22 +47,22 @@ loadMonkey _ = error "malformat"
 
 
 
-readItems ::String ->[Integer]
+readItems ::String ->[Int]
 readItems xs = let (_:sub:_) = wordsWhile (==':') xs
                    ns = wordsWhile(==',') sub
                in
                  map read ns
 
-readOper :: String -> (Integer->Integer)
+readOper :: String -> (Int-> Int)
 readOper xs = let (_:sub:_) = wordsWhile (=='=') xs
                   ops = words sub
               in
                 oper ops
 
-readLastNum :: String -> Integer
+readLastNum :: String -> Int
 readLastNum xs = read $ last $ words xs
                 
-oper :: [String] -> (Integer  -> Integer)
+oper :: [String] -> (Int  -> Int)
 oper (operant1:op:operant2:_) = if operant1 == operant2 then case op of
                                                                     "*" -> (^2)
                                                                     "+" -> (*2)
@@ -102,13 +104,13 @@ oper (operant1:op:operant2:_) = if operant1 == operant2 then case op of
 -- testMonkeys = [testMonkey0,testMonkey1,testMonkey2]
 --simulate :: [Monkey] -> [Monkey]
 --simulate monkeys = go monkes
-simMonkey :: Int ->State [Monkey] ()
-simMonkey i = do
+simMonkey :: Int -> Int -> State [Monkey] ()
+simMonkey i commonDivisor = do
    monkeys <- get 
    let monkey = monkeys !! i
    updateItems (items monkey)
      where
-       updateItems :: [Integer] -> State [Monkey] ()
+       updateItems :: [Int] -> State [Monkey] ()
        updateItems [] = return ()
        updateItems (item:rest) = do
              monkeys <- get
@@ -118,7 +120,7 @@ simMonkey i = do
                  new = ((operation monkey) item ) 
                  newmonkeys = updateMonkey newMonkey monkeys
              put(newmonkeys)
-             if new `mod` (divisible monkey) == 0 then put (throwItems new (trueBranch monkey) newmonkeys) >> updateItems rest
+             if new `mod` fromIntegral ((divisible monkey)) == 0 then put (throwItems new  (trueBranch monkey) newmonkeys) >> updateItems rest
                                                   else put (throwItems new (falseBranch monkey)  newmonkeys) >> updateItems rest
 
        updateMonkey monkey monkeys = let (pre,target:after) = splitAt i monkeys
@@ -126,29 +128,34 @@ simMonkey i = do
                                            pre ++ (monkey:after)
                                            
        throwItems val tgt monkeys = let (pre,target:after) = splitAt tgt monkeys
-                                        newitems = (items target) ++ [val]
+                                        divisible' = (divisible target)
+                                        newVal   = val  `mod` commonDivisor
+                                        newitems = (items target) ++ [newVal]
                                         newMonkey = target {items = newitems}
                                         in
                                           pre++ (newMonkey:after)
 
 
-simSingleRound :: Int -> State [Monkey] ()
-simSingleRound size = go 0
+simSingleRound :: Int -> Int -> State [Monkey] ()
+simSingleRound size commonDivisor = go 0
   where go n = if n == size then return ()
-                            else simMonkey n >> go (n+1)
+                            else simMonkey n commonDivisor >> go (n+1)
 
 
-simRounds :: Int -> Int -> State [Monkey] ()
-simRounds n size = replicateM_ n (simSingleRound size)
+simRounds :: Int -> Int -> Int -> State [Monkey] ()
+simRounds n size commonDivisor = replicateM_ n (simSingleRound size commonDivisor)
 
 
-part1 :: IO ()
-part1 = do
-  file <- readFile "sample.txt"
+part2 ::Int-> IO ()
+part2 round= do
+  file <- readFile "input.txt"
   let monkeys = loadMonkeys file
   let size = length monkeys
-  let (_,result1000) = runState (simRounds 1000 size) monkeys
-  let (_,result5000) = runState (simRounds 4000 size) result1000
-  let answers = map (\monkey -> count monkey) result5000
+  let commonDivisor = product $ map (\monkey -> divisible monkey) monkeys
+  let (_,result) = runState (simRounds round size commonDivisor) monkeys
+  --let (_,result5000) = runState (simRounds 4000 size) result1000
+  --let answers = map (\monkey -> items monkey) result
+  let answers = map (\monkey -> count monkey) result
   let (a:b:answers') = sortBy (flip compare) answers
-  putStrLn $ show $ (toInteger a) * (toInteger b)
+  putStrLn $ show $ (a) * (b)
+  putStrLn $ show answers
