@@ -15,16 +15,16 @@ wordsWhile p xs = case dropWhile p xs of
 
 
 data Monkey = Monkey {
-                       items :: [Int]
-                     , operation :: (Int  -> Int)
-                     , divisible :: Int
+                       items :: [Integer]
+                     , operation :: (Integer  -> Integer)
+                     , divisible :: Integer
                      , trueBranch :: Int
                      , falseBranch :: Int
                      , count :: Int
                      }
 
 instance Show Monkey where
-  show  (Monkey _items _ divisible _ _ _) = "(" ++ show _items ++ "," ++ show divisible ++ ")"
+  show  (Monkey _items _ divisible _ _ c) = "(" ++ show _items ++ "," ++ show divisible ++"," ++ show c ++ ")"
 
 loadMonkeys :: String -> [Monkey]
 loadMonkeys xs = let xs' = wordsWhile (=="") $ lines xs in
@@ -35,8 +35,8 @@ loadMonkey (_:a:b:c:d:e:[]) = Monkey {
                                         items = readItems a
                                        ,operation = readOper b
                                        ,divisible = readLastNum c
-                                       ,trueBranch = readLastNum d
-                                       , falseBranch = readLastNum e
+                                       ,trueBranch = fromIntegral $ readLastNum d
+                                       , falseBranch = fromIntegral $ readLastNum e
                                        , count = 0
                                        }
 loadMonkey _ = error "malformat"
@@ -45,22 +45,22 @@ loadMonkey _ = error "malformat"
 
 
 
-readItems ::String ->[Int]
+readItems ::String ->[Integer]
 readItems xs = let (_:sub:_) = wordsWhile (==':') xs
                    ns = wordsWhile(==',') sub
                in
                  map read ns
 
-readOper :: String -> (Int->Int)
+readOper :: String -> (Integer->Integer)
 readOper xs = let (_:sub:_) = wordsWhile (=='=') xs
                   ops = words sub
               in
                 oper ops
 
-readLastNum :: String -> Int
+readLastNum :: String -> Integer
 readLastNum xs = read $ last $ words xs
                 
-oper :: [String] -> (Int  -> Int)
+oper :: [String] -> (Integer  -> Integer)
 oper (operant1:op:operant2:_) = if operant1 == operant2 then case op of
                                                                     "*" -> (^2)
                                                                     "+" -> (*2)
@@ -108,13 +108,14 @@ simMonkey i = do
    let monkey = monkeys !! i
    updateItems (items monkey)
      where
-       updateItems :: [Int] -> State [Monkey] ()
+       updateItems :: [Integer] -> State [Monkey] ()
        updateItems [] = return ()
        updateItems (item:rest) = do
              monkeys <- get
              let monkey = monkeys !! i
-                 newMonkey = monkey{items = rest}
-                 new = ((operation monkey) item ) `div` 3
+                 newCount  = (count monkey) +1
+                 newMonkey = monkey{items = rest, count = newCount}
+                 new = ((operation monkey) item ) 
                  newmonkeys = updateMonkey newMonkey monkeys
              put(newmonkeys)
              if new `mod` (divisible monkey) == 0 then put (throwItems new (trueBranch monkey) newmonkeys) >> updateItems rest
@@ -137,5 +138,17 @@ simSingleRound size = go 0
                             else simMonkey n >> go (n+1)
 
 
-simRounds :: Int -> State [Monkey] ()
-simRounds n = replicateM_ n (simSingleRound 4)
+simRounds :: Int -> Int -> State [Monkey] ()
+simRounds n size = replicateM_ n (simSingleRound size)
+
+
+part1 :: IO ()
+part1 = do
+  file <- readFile "sample.txt"
+  let monkeys = loadMonkeys file
+  let size = length monkeys
+  let (_,result1000) = runState (simRounds 1000 size) monkeys
+  let (_,result5000) = runState (simRounds 4000 size) result1000
+  let answers = map (\monkey -> count monkey) result5000
+  let (a:b:answers') = sortBy (flip compare) answers
+  putStrLn $ show $ (toInteger a) * (toInteger b)
